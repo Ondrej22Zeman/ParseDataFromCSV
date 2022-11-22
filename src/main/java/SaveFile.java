@@ -1,4 +1,5 @@
 import com.opencsv.CSVWriter;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.swing.text.html.HTMLWriter;
 import java.io.File;
@@ -7,6 +8,7 @@ import java.io.IOException;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class SaveFile {
     private final ArrayList<RowData> rows;
@@ -24,18 +26,48 @@ public class SaveFile {
         this.sortMethod = sortMethod;
     }
 
-    public void createSaveFile() throws IOException {
-        File file = new File("out/file.csv");
+    public void createSaveFile(ArrayList<String[]> list) throws IOException {
+        File file = new File("out/file.html");
 
-        FileWriter outputfile = new FileWriter(file);
-        CSVWriter writer = new CSVWriter(outputfile);
+        FileWriter fileWriter = new FileWriter(file);
+
+
+        fileWriter.write("""
+                <!DOCTYPE html>
+                <html>
+                <body>
+                <table style="text-align: center">
+                <tr style="background-color: grey">
+                <th style="width: 140px">Vendor</th>
+                <th style="width: 140px">Units</th>
+                <th style="width: 140px">Share</th>
+                </tr>""");
+
+        int i = 0;
+        for (String[] row : list) {
+            if (i == list.size()-1){
+                fileWriter.write("<tr style=\"background-color: yellow\">" + "\n");
+            }else{
+                fileWriter.write("<tr>" + "\n");
+            }
+            fileWriter.write("<td>" + row[0] + "</td>" + "\n");
+            fileWriter.write("<td>" + row[1] + "</td>" + "\n");
+            fileWriter.write("<td>" + row[2] + "</td>" + "\n");
+            fileWriter.write("</tr>"+ "\n");
+            i++;
+        }
+        fileWriter.write("""
+                </table>
+                </body>
+                </html>""");
+        fileWriter.close();
     }
 
     public ArrayList<String[]> createArray(){
         ArrayList<String[]> filteredList = new ArrayList<>();
 
 
-        DecimalFormat df = new DecimalFormat("#.##");
+        DecimalFormat df = new DecimalFormat("#.###");
         df.setRoundingMode(RoundingMode.CEILING);
 
 
@@ -44,7 +76,10 @@ public class SaveFile {
                 boolean duplicityVendor = false;
                 for (String[] filteredRow : filteredList) {
                     if (Objects.equals(filteredRow[0], row.getVendor())){
-                        filteredRow[1] = String.valueOf(Double.parseDouble(row.getUnits()) + Double.parseDouble(filteredRow[1]));
+                        filteredRow[1] = String.valueOf(
+                                Double.parseDouble(row.getUnits()) +
+                                Double.parseDouble(filteredRow[1])
+                        );
                         duplicityVendor = true;
                         break;
                     }
@@ -68,7 +103,8 @@ public class SaveFile {
             filteredList.sort(new Comparator<String[]>() {
                 @Override
                 public int compare(String[] o1, String[] o2) {
-                    return o1[0].split(".").compareTo(o2[0].split("."));
+
+                    return o1[0].compareTo(o2[0]);
                 }
             });
         }
@@ -77,13 +113,16 @@ public class SaveFile {
             filteredList.sort(new Comparator<String[]>() {
                 @Override
                 public int compare(String[] o1, String[] o2) {
-                    return o1[1].compareTo(o2[1]);
+                    Double firstToCompare = Double.parseDouble(o1[1]);
+                    Double secondToCompare = Double.parseDouble(o2[1]);
+                    return secondToCompare.compareTo(firstToCompare);
                 }
             });
         }
 
         for (String[] row :
                 filteredList) {
+            row[1] = df.format(Double.parseDouble(row[1]));
             System.out.println(Arrays.toString(row));
         }
 
@@ -91,7 +130,7 @@ public class SaveFile {
             String[] vendorInformation = null;
             int i = 0;
             for (String[] row: filteredList) {
-                if (Objects.equals(row[0], chosenVendor)){
+                if (Objects.equals(row[i], chosenVendor)){
                     vendorInformation = row;
                     break;
                 }
@@ -102,9 +141,7 @@ public class SaveFile {
             System.out.println(chosenVendor + " sold " + vendorInformation[1] + " units, and their share was " + vendorInformation[2]);
         }
 
-
-        filteredList.add(0, new String[]{"Vendor", "Units", "Share"});
-        filteredList.add(new String[]{"Total", String.valueOf(totalUnits), "100%"});
+        filteredList.add(new String[]{"Total", df.format(totalUnits), "100%"});
 
         return filteredList;
 
